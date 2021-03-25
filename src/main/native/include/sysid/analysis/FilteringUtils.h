@@ -95,16 +95,12 @@ inline void TrimStepVoltageData(std::vector<PreparedData>* data,
   // If step duration hasn't been set yet, set calculate a default (find the
   // entry before the acceleration first hits zero)
   if (static_cast<double>(stepTestDuration) <= minStepTime) {
-    // Compute this from the standard deviation of the data against the moving
-    // median
-    double accelNoiseFloor = 0.7;
-
     // Find latest element with nonzero acceleration
-    auto endIt = std::find_if(
-        std::reverse_iterator{data->end()},
-        std::reverse_iterator{data->begin()}, [&](const PreparedData& entry) {
-          return std::abs(entry.acceleration) > accelNoiseFloor;
-        });
+    auto endIt = std::find_if(std::reverse_iterator{data->end()},
+                              std::reverse_iterator{data->begin()},
+                              [&](const PreparedData& entry) {
+                                return std::abs(entry.acceleration) > 0.0;
+                              });
 
     // Calculate default duration
     stepTestDuration = static_cast<float>(
