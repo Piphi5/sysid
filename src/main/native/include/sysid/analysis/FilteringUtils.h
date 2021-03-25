@@ -72,7 +72,7 @@ std::vector<std::array<double, S>> ApplyMedianFilter(
 
 /**
  * Trims the step voltage data to discard all points before the maximum
- * acceleration.
+ * acceleration and after reaching stead-state velocity.
  *
  * @param data A pointer to the step voltage data.
  * @param stepTestDuration A reference to the step test duration that will be
@@ -81,79 +81,46 @@ std::vector<std::array<double, S>> ApplyMedianFilter(
  */
 inline void TrimStepVoltageData(std::vector<PreparedData>* data,
                                 float& stepTestDuration, double& minStepTime) {
-  // We want to find the point where the acceleration data roughly stops
-  // decreasing at the beginning.
-  size_t idx = 0;
+  double firstTimestamp = data->at(0).timestamp;
 
-  // We will use this to make sure that the acceleration is decreasing for 3
-  // consecutive entries in a row. This will help avoid false positives from
-  // bad data.
-  bool caution = false;
+  // Trim data before max acceleration
+  data->erase(data->begin(),
+              std::max_element(
+                  data->begin(), data->end(), [](const auto& a, const auto& b) {
+                    return std::abs(a.acceleration) < std::abs(b.acceleration);
+                  }));
 
-  for (size_t i = 0; i < data->size(); ++i) {
-    // Get the current acceleration.
-    double acc = std::abs(data->at(i).acceleration);
-
-    // If we are not in caution, the acceleration values are still increasing.
-    if (!caution) {
-      if (acc < std::abs(data->at(idx).acceleration)) {
-        // We found a potential candidate. Let's mark the flag and continue
-        // checking...
-        caution = true;
-      } else {
-        // Set the current acceleration to be the highest so far.
-        idx = i;
-      }
-    } else {
-      // Check to make sure the acceleration value is still smaller. If it
-      // isn't, break out of caution.
-      if (acc >= std::abs(data->at(idx).acceleration)) {
-        caution = false;
-        idx = i;
-      }
-    }
-
-    // If we were in caution for three iterations, we can exit.
-    if (caution && (i - idx) == 3) {
-      break;
-    }
-  }
-
-  minStepTime =
-      std::min(data->at(idx).timestamp - data->at(0).timestamp, minStepTime);
-  data->erase(data->begin(), data->begin() + idx);
+  minStepTime = std::min(data->at(0).timestamp - firstTimestamp, minStepTime);
 
   // If step duration hasn't been set yet, set calculate a default (find the
   // entry before the acceleration first hits zero)
   if (static_cast<double>(stepTestDuration) <= minStepTime) {
-    size_t default_idx =
-        std::distance(data->begin(),
-                      std::find_if(data->begin(), data->end(),
-                                   [&](PreparedData entry) {
-                                     return std::abs(entry.acceleration) == 0.0;
-                                   })) -
-        1;
+    // Compute this from the standard deviation of the data against the moving
+    // median
+    double accelNoiseFloor = 0.7;
 
-    // bound it with the last element
-    default_idx = std::min(default_idx, data->size() - 1);
+    // Find latest element with nonzero acceleration
+    auto endIt = std::find_if(
+        std::reverse_iterator{data->end()},
+        std::reverse_iterator{data->begin()}, [&](const PreparedData& entry) {
+          return std::abs(entry.acceleration) > accelNoiseFloor;
+        });
 
-    // calculate default duration
-    stepTestDuration =
-        static_cast<float>(data->at(default_idx).timestamp -
-                           data->front().timestamp + minStepTime);
+    // Calculate default duration
+    stepTestDuration = static_cast<float>(
+        endIt->timestamp - data->front().timestamp + minStepTime);
   }
 
   // Find first entry greater than the step test duration
-  size_t max_idx = std::distance(
-      data->begin(),
+  auto maxIt =
       std::find_if(data->begin(), data->end(), [&](PreparedData entry) {
         return entry.timestamp - data->front().timestamp + minStepTime >
                stepTestDuration;
-      }));
+      });
 
-  // Trim Data Beyond desired Step Test Duration
-  if (max_idx != data->size()) {
-    data->erase(data->begin() + max_idx, data->end());
+  // Trim data beyond desired step test duration
+  if (maxIt != data->end()) {
+    data->erase(maxIt, data->end());
   }
 }
 }  // namespace sysid
