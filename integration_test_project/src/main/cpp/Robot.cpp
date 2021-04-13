@@ -35,9 +35,6 @@ class Robot : public frc::TimedRobot {
     // values are sent during every iteration.
     SetNetworkTablesFlushEnabled(true);
     frc::SmartDashboard::PutString("SysIdTest", "Drivetrain");
-    frc::SmartDashboard::PutNumber("SysIdAutoSpeed", 0.0);
-    frc::SmartDashboard::PutString("SysIdUnit", "Meters");
-    frc::SmartDashboard::PutNumber("SysIdUnitsPerRotation", 1.0);
   }
 
   void DisabledInit() override {
@@ -48,8 +45,10 @@ class Robot : public frc::TimedRobot {
 
     m_arm.ResetReadings();
     if (m_test == "Drivetrain") {
+      std::cout << "SEND DRIVE\n";
       m_driveLogger.SendData();
     } else {
+      std::cout << "SEND Gneral\n";
       m_generalLogger.SendData();
     }
   }
@@ -63,8 +62,15 @@ class Robot : public frc::TimedRobot {
   }
 
   void AutonomousInit() override {
-    m_driveLogger.InitLogging();
-    m_generalLogger.InitLogging();
+    m_test = frc::SmartDashboard::GetString("SysIdTest", "Simple");
+    if (m_test == "Drivetrain") {
+      std::cout << "DRIVE\n";
+      m_driveLogger.InitLogging();
+    } else {
+      std::cout << "General\n";
+      m_generalLogger.InitLogging();
+    }
+
     m_elevator.UpdateInitialSpeed();
     m_arm.ResetReadings();
 
@@ -118,7 +124,6 @@ class Robot : public frc::TimedRobot {
     m_elevator.SimulationPeriodic();
     m_arm.SimulationPeriodic();
 
-    m_test = frc::SmartDashboard::GetString("SysIdTest", "Simple");
     frc::SmartDashboard::PutString("ServerTest", m_test);
 
 #ifdef INTEGRATION

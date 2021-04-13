@@ -9,7 +9,8 @@ Here is a list of the NT entries that are used to send and collect data between 
 |             NT Entry             |   Type   |                                                                    Description                                                                     |
 | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/SmartDashboard/SysIdTelemetry` | `string` | Used to send telemetry from the robot program. This data is sent after the test completes once the robot enters the disabled state.                |
-| `/SmartDashboard/SysIdAutoSpeed` | `double` | Used to receive the latest autospeed value from the Logger.                                                                                        |
+| `/SmartDashboard/SysIdVoltageCommand` | `double` | Used to either send the ramp rate (V/s) for the quasistatic test or the voltage (V) for the dynamic test.                                                                                        |
+| `/SmartDashboard/SysIdTestType` | `string` | Used to send the test type ("Quasistatic" or "Dynamic") which helps determine how the `VoltageCommand` entry will be used.                                                                                        |
 | `/SmartDashboard/SysIdRotate`    | `bool`   | Used to receive the rotation bool from the Logger. If this is set to true, the drivetrain will rotate. It is only applicable for drivetrain tests. |
 
 ## Telemetry Format
